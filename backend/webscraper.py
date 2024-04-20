@@ -6,6 +6,8 @@ from bs4 import BeautifulSoup
 from unidecode import unidecode
 import csv
 
+debug = False
+
 # {{company, [date, title, abstract]}}
 dict = {}
 
@@ -58,17 +60,16 @@ def main():
             data = driver.find_element(By.CLASS_NAME, "css-17ubb9w").text
             abstract = driver.find_element(By.CLASS_NAME, "css-16nhkrn").text
             company = url
-            # dict[title] = [data, abstract, company]
-            # dict.update({company:[data,title,abstract]})
             if(url not in dict):
                 dict[url] = []
             dict[url].append([data, title, abstract])
-            print("-------------------------------------------------------")
-            print(title)
-            print(data)
-            print(abstract)
-            print(company)
-            print("-------------------------------------------------------")
+            if(debug):
+                print("-------------------------------------------------------")
+                print(title)
+                print(data)
+                print(abstract)
+                print(company)
+                print("-------------------------------------------------------")
 
         driver.quit()
 
