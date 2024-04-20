@@ -2,10 +2,12 @@ import threading
 from selenium import webdriver
 from selenium.webdriver.common.by import By 
 from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import NoSuchElementException
 from unidecode import unidecode
 import csv
 
-debug = False
+# debug = False
+debug = True
 
 # Dictionary to store results
 results_dict = {}
@@ -48,16 +50,33 @@ def scrape_tag(tag):
     for url in urls:
         chrome_options = Options()
         chrome_options.add_argument("--headless")  # Set Chrome to run in headless mode
-        page_url = f'https://www.nytimes.com/search?dropmab=false&endDate=2016-12-31&query={url}&sections={tag}%7Cnyt%3A%2F%2Fsection%2F4224240f-b1ab-50bd-881f-782d6a3bc527&sort=best&startDate=2006-01-01'
+        page_url = f'https://www.nytimes.com/search?dropmab=false&endDate=2016-12-31&query={url}&sections={tag}%7Cnyt%3A%2F%2Fsection%2F4224240f-b1ab-50bd-881f-782d6a3bc527&sort=newest&startDate=2006-01-01'
         driver = webdriver.Chrome(options=chrome_options)
         driver.get(page_url)
 
-        results = driver.find_elements(By.CLASS_NAME, "css-2fgx4k")
+        
+        # Function to click the "Show More" button
+        def click_show_more():
+            for _ in range(200):
+                try:
+                    show_more_button = driver.find_element(By.XPATH, "//button[@data-testid='search-show-more-button']")
+                    # driver.execute_script("arguments[0].scrollIntoView();", show_more_button)  # Scroll to the button
+                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                    driver.execute_script("arguments[0].click();", show_more_button)  # Click the button
+                except Exception as e:
+                    print(f"An exception occurred: {e}")
+                    break
 
-        for result in results:
-            title = result.text
-            data = driver.find_element(By.CLASS_NAME, "css-17ubb9w").text
-            abstract = driver.find_element(By.CLASS_NAME, "css-16nhkrn").text
+        click_show_more()
+        
+        title_results = driver.find_elements(By.CLASS_NAME, "css-2fgx4k")
+        data_results = driver.find_elements(By.CLASS_NAME, "css-17ubb9w")
+        abstract_results = driver.find_elements(By.CLASS_NAME, "css-16nhkrn")
+
+        for title_result, data_result, abstract_result in zip(title_results, data_results, abstract_results):
+            title = title_result.text
+            data = data_result.text
+            abstract = abstract_result.text
             company = url
             with lock:
                 if url not in results_dict:
@@ -65,20 +84,17 @@ def scrape_tag(tag):
                 results_dict[url].append([data, title, abstract])
             if debug:
                 print("-------------------------------------------------------")
+                print(company)
                 print(title)
                 print(data)
                 print(abstract)
-                print(company)
                 print("-------------------------------------------------------")
 
         driver.quit()
 
 def main():
-    count = 0
     threads = []
     for tag in tags:
-        count +=1
-        print(count)
         t = threading.Thread(target=scrape_tag, args=(tag,))
         threads.append(t)
         t.start()
